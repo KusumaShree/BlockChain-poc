@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-
 ![Hyperledger Sawtooth](images/sawtooth_logo_light_blue-small.png)
 
 # Sawtooth Supply Chain
@@ -208,7 +206,3 @@ License.  You may obtain a copy of the license at:
 http://creativecommons.org/licenses/by/4.0/.
 
 ![Open Source Award Badge](images/rookies16-small.png)
-=======
-# BlockChain-poc
-BlockChain-poc
->>>>>>> 0d225a6c960d8c399a0fca20bdcd3375e36994d7

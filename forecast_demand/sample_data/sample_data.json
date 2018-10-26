@@ -1,0 +1,37 @@
+{
+  "records": [
+    {
+      "recordId": "1-4m-4-f1sh",
+      "recordType": "demand",
+      "properties": [
+          {
+            "name":"quantity",
+            "dataType": 2,
+            "intValue": 100 
+          },
+          {
+            "name": "deliveryDate",
+            "dataType": 1,
+            "stringValue": "21/02/2019"
+          }
+      ],
+      "ownerIndex": 0,
+      "custodianIndex": 2,
+      "reporterIndex": 1,
+      "reportableProperties": ["quantity", "deliveryDate"]
+    }
+  ],
+
+  "agents": [
+    {
+      "username": "ahab",
+      "password": "ahab",
+      "publicKey": "03ba003ea48e3599f73939b7908ca361cf539cc0baa7b0a049c590bcc46e2ef55a",
+      "name": "Ahab",
+      "email": "ahab@pequod.net",
+      "privateKey": "063f9ca21d4ef4955f3e120374f7c22272f42106c466a91d01779efba22c2cb6",
+      "encryptedKey": "{\"iv\":\"sKGty1gSvZGmCwzkGy0vvg==\",\"v\":1,\"iter\":10000,\"ks\":128,\"ts\":64,\"mode\":\"ccm\",\"adata\":\"\",\"cipher\":\"aes\",\"salt\":\"lYT7rTJpTV0=\",\"ct\":\"taU8UNB5oJrquzEiXBV+rTTnEq9XmaO9BKeLQQWWuyXJdZ6wR9G+FYrKPkYnXc30iS/9amSG272C8qqnPdM4OE0dvjIdWgSd\"}",
+      "hashedPassword": "KNYr+guWkg77DbaWofgK72LrNdaQzzJGIkk2rEHqP9Y="
+    }
+  ]
+}

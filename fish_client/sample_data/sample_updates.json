@@ -1,0 +1,19 @@
+[
+  {
+    "recordId": "KABY_LAKE",
+    "privateKey": "03ba003ea48e3599f73939b7908ca361cf539cc0baa7b0a049c590bcc46e2ef55a",
+    "updates": [
+      {
+        "name": "quantity",
+        "dataType": 2,
+        "value": 100
+      },
+
+      {
+        "name": "deliveryDate",
+        "dataType": 1,
+        "value": "21/02/2020"
+      }
+    ]
+  }
+]

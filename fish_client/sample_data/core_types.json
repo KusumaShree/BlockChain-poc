@@ -1,0 +1,17 @@
+[
+  {
+    "name": "demand",
+    "properties": [
+        {
+          "name": "deliveryDate",
+          "dataType": 1,
+          "required": true
+        },
+        {
+          "name": "quantity",
+          "dataType": 2,
+          "required": true
+        }
+    ]
+  }
+]

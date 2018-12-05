@@ -25,21 +25,15 @@ const parsing = require('../services/parsing')
 const {MultiSelect} = require('../components/forms')
 const layout = require('../components/layout')
 
-/**
- * Possible selection options
- */
-// const authorizableProperties = [
-//   ['location', 'Location'],
-//   ['temperature', 'Temperature'],
-//   ['tilt', 'Tilt'],
-//   ['shock', 'Shock']
-// ]
 
-const authorizableProperties = [
-  ['quantity', 'Quantity'],
-  ['deliveryDate', 'Delivery Date']
+const reporterProperties = [
+  "WW01",
+  "WW02",
+  "WW03",
+  "WW04",
+  "WW05",
+  "Status"
 ]
-
 /**
  * The Form for tracking a new fish.
  */
@@ -71,83 +65,6 @@ const CreateDemand = {
               }
             })
           )
-    // return m('.demand_form',
-    //          m('form', {
-    //            onsubmit: (e) => {
-    //              e.preventDefault()
-    //              _handleSubmit(vnode.attrs.signingKey, vnode.state)
-    //            }
-    //          },
-    //          m('legend', 'Create Demand'),
-    //          _formGroup('Material Number', m('input.form-control', {
-    //            type: 'text',
-    //            oninput: m.withAttr('value', (value) => {
-    //              vnode.state.materialNumber = value
-    //            }),
-    //            value: vnode.state.materialNumber
-    //          })),
-    //         //  _formGroup('Species (ASFIS 3-letter code)', m('input.form-control', {
-    //         //    type: 'text',
-    //         //    oninput: m.withAttr('value', (value) => {
-    //         //      vnode.state.species = value
-    //         //    }),
-    //         //    value: vnode.state.species
-    //         //  })),
-
-    //          layout.row([
-    //            _formGroup('Quantity (units)', m('input.form-control', {
-    //              type: 'number',
-    //              min: 0,
-    //              step: 'any',
-    //              oninput: m.withAttr('value', (value) => {
-    //                vnode.state.quantity = value
-    //              }),
-    //              value: vnode.state.quantity
-    //            })),
-    //            _formGroup('Delivery Date (dd/MM/yyyy/)', m('input.form-control', {
-    //              type: 'text',
-    //              oninput: m.withAttr('value', (value) => {
-    //                vnode.state.deliveryDate = value
-    //              }),
-    //              value: vnode.state.deliveryDate
-    //            }))
-    //          ]),
-    //          m('.reporters.form-group',
-    //            m('label', 'Authorize Supplier'),
-
-    //            vnode.state.reporters.map((reporter, i) =>
-    //              m('.row.mb-2',
-    //                m('.col-sm-8',
-    //                  m('input.form-control', {
-    //                    type: 'text',
-    //                    placeholder: 'Add Supplier by name or public key...',
-    //                    oninput: m.withAttr('value', (value) => {
-    //                      // clear any previously matched values
-    //                      vnode.state.reporters[i].reporterKey = null
-    //                      const reporter = vnode.state.agents.find(agent => {
-    //                        return agent.name === value || agent.key === value
-    //                      })
-    //                      if (reporter) {
-    //                        vnode.state.reporters[i].reporterKey = reporter.key
-    //                      }
-    //                    }),
-    //                    onblur: () => _updateReporters(vnode, i)
-    //                  })),
-
-    //                m('.col-sm-4',
-    //                  m(MultiSelect, {
-    //                    label: 'Select Fields',
-    //                    options: authorizableProperties,
-    //                    selected: reporter.properties,
-    //                    onchange: (selection) => {
-    //                      vnode.state.reporters[i].properties = selection
-    //                    }
-    //                  }))))),
-
-    //                  m('.row.justify-content-end.align-items-end',
-    //                  m('col-2',
-    //                    m('button.btn.btn-primary',
-    //                      'Create Record')))))
   }
 }
 
@@ -196,43 +113,62 @@ const _fileUpload = (vnode,e) => {
 const _prepAndSubmit = (vnode,fileData) => {
   var recordPayload = [];
   var reporterPayLoads = [];
-  var finalPayload = []
+  var finalPayload = [];
+  var newPayload = [];
   for(var i=0; i< fileData.length; i++){
-    var tempRecPayLoad = payloads.createRecord({
-      recordId: fileData[i].Material,
-      recordType: 'demand',
+    var tempJson = {
+      recordId: (fileData[i].Material).toString(),
+      recordType: 'PRFRTF',
       properties: [
         {
-          name: 'quantity',
-          intValue: fileData[i].Quantity,
-          dataType: payloads.createRecord.enum.INT
-        },
-        {
-          name: 'deliveryDate',
-          stringValue: fileData[i].DeliveryDate,
+          name: "WW01",
+          stringValue: fileData[i].WW01_quantity + ";" + (fileData[i].WW01_deliveryDate).toLocaleDateString(),
           dataType: payloads.createRecord.enum.STRING
-        },
+        }
       ]
-    })
-    recordPayload.push(tempRecPayLoad);
+    }
+    for(var n = 2; n <= 5; n++){
+      if(fileData[i]['WW0' + n + '_quantity'] && fileData[i]['WW0'+ n + '_deliveryDate']){
+        tempJson.properties = tempJson.properties.concat([
+          {
+            name: 'WW0' + n,
+            stringValue: fileData[i]['WW0' + n + '_quantity'] + ";" + (fileData[i]['WW0'+ n + '_deliveryDate']).toLocaleDateString(),
+            dataType: payloads.createRecord.enum.STRING
+          }
+        ])
+      }
+    }
 
-    var reporter = vnode.state.agents.find(agent => {
-      return agent.name === fileData[i].Reporter
+    tempJson.properties.push({
+      name: "Status",
+      stringValue: "PRF submitted by Intel",
+      dataType: payloads.createRecord.enum.STRING
     })
-    if (reporter) {
-      var tempReporterPayload = payloads.createProposal({
-        recordId: fileData[i].Material,
-        receivingAgent: reporter.reporterKey,
+
+    var tempRecPayLoad = payloads.createRecord(tempJson)
+    recordPayload.push(tempRecPayLoad);
+    newPayload.push(tempRecPayLoad);  
+  }
+  
+  for(var i=0; i< fileData.length; i++){
+    var supplier = fileData[i].Supplier
+    var reporter = vnode.state.agents.find(agent => {
+      return agent.name === supplier
+    })
+
+    if(reporter){
+      newPayload.push(payloads.createProposal({
+        recordId: (fileData[i].Material).toString(),
+        receivingAgent: reporter.key,
         role: payloads.createProposal.enum.REPORTER,
-        properties: reporter.properties
-      })
-      reporterPayLoads.push(tempReporterPayload);
-    }    
+        properties: reporterProperties
+      }))
+    }
   }
   finalPayload = recordPayload.concat(reporterPayLoads);
   
-  transactions.submit(finalPayload, true)
-    .then(() => m.route.set(`/demandDetail/${fileData[i].Material}`))
+  transactions.submit(newPayload, true)
+    .then(() => { () => m.route.set(`/demandDetail`) })
 }
 
 /**
@@ -245,11 +181,6 @@ const _handleSubmit = (signingKey, state) => {
     recordId: state.materialNumber,
     recordType: 'demand',
     properties: [
-    //   {
-    //     name: 'species',
-    //     stringValue: state.species,
-    //     dataType: payloads.createRecord.enum.STRING
-    //   },
      
       {
         name: 'quantity',
@@ -261,14 +192,6 @@ const _handleSubmit = (signingKey, state) => {
         stringValue: state.deliveryDate,
         dataType: payloads.createRecord.enum.STRING
       },
-    //   {
-    //     name: 'location',
-    //     locationValue: {
-    //       latitude: parsing.toInt(state.latitude),
-    //       longitude: parsing.toInt(state.longitude)
-    //     },
-    //     dataType: payloads.createRecord.enum.LOCATION
-    //   }
     ]
   })
 
@@ -277,7 +200,7 @@ const _handleSubmit = (signingKey, state) => {
     .map((reporter) => payloads.createProposal({
       recordId: state.materialNumber,
       receivingAgent: reporter.reporterKey,
-      role: payloads.createProposal.enum.REPORTER,
+      role: payloads.createProposal.enum.CUSTODIAN,
       properties: reporter.properties
     }))
 

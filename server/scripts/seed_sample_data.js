@@ -149,6 +149,7 @@ protos.compile()
   // Authorize New Reporters
   .then(() => {
     console.log('Authorizing New Reporters . . .')
+    console.log(`./${records}`)
     const reporterProposals = records
       .filter(record => record.reporterIndex !== undefined)
       .map(record => {

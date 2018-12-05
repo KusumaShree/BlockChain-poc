@@ -26,6 +26,7 @@ services:
     volumes:
       - .:/sawtooth-supply-chain
       - /sawtooth-supply-chain/forecast_demand/node_modules
+      - /sawtooth-supply-chain/supplier_rtf/node_modules
       - /sawtooth-supply-chain/server/node_modules
     depends_on:
       - rethink
@@ -37,7 +38,8 @@ services:
     command: |
       bash -c "
         protogen &&
-        cd forecast_demand/ && npm run build && cd - &&
+        cd forecast_demand/ && npm run build && cd - &
+        cd supplier_rtf/ && npm run build && cd - &
         if [ ! -f /root/.sawtooth/keys/root.priv ]; then
           sawtooth keygen &&
           cd server/ &&
@@ -120,6 +122,19 @@ services:
       - '8041:80'
     depends_on:
       - server
+  
+  supplier_rtf:
+    image: supplier_rtf
+    container_name: supplier_rtf
+    build: ./supplier_rtf
+    volumes:
+      - ./supplier_rtf/public/:/usr/local/apache2/htdocs/
+    expose:
+      - 80
+    ports:
+      - '8042:80'
+    depends_on:
+      - server
 
   rethink:
     image: rethinkdb
@@ -138,6 +153,7 @@ services:
       - 4004
     ports:
       - '4020:4004'
+      - '8800:8800'
     # start the validator with an empty genesis batch
     entrypoint: |
       bash -c "
@@ -145,12 +161,22 @@ services:
           sawadm keygen &&
           sawtooth keygen my_key &&
           sawset genesis -k /root/.sawtooth/keys/my_key.priv &&
-          sawadm genesis config-genesis.batch
+          sawadm genesis config-genesis.batch &&
+          sawset proposal create -k /etc/sawtooth/keys/validator.priv \
+          -o config.batch \
+          sawtooth.consensus.algorithm=poet \
+          sawtooth.poet.report_public_key_pem= cat /etc/sawtooth/simulator_rk_pub.pem
+          sawtooth.poet.valid_enclave_measurements=poet enclave measurement \
+          sawtooth.poet.valid_enclave_basenames=poet enclave basename &&
+          poet registration create -k /etc/sawtooth/keys/validator.priv -o poet.batch &&
+          sawadm genesis config-genesis.batch config.batch poet.batch poet-settings.batch
         fi;
         sawtooth-validator -vv \
-          --endpoint tcp://validator:8800 \
+          --endpoint tcp://192.168.1.102:8800 \
           --bind component:tcp://eth0:4004 \
-          --bind network:tcp://eth0:8800
+          --bind network:tcp://eth0:8800 \
+          --peering static \
+          --peers tcp://192.168.1.101:8800 
       "
 
   settings-tp:

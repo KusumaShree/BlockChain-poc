@@ -25,6 +25,7 @@ const payloads = require('../services/payloads')
 const parsing = require('../services/parsing')
 const transactions = require('../services/transactions')
 const api = require('../services/api')
+const {Table, FilterGroup, PagingButtons} = require('../components/tables')
 const {
   getPropertyValue,
   getLatestPropertyUpdateTime,
@@ -35,17 +36,6 @@ const {
 /**
  * Possible selection options
  */
-// const authorizableProperties = [
-//   ['location', 'Location'],
-//   ['temperature', 'Temperature'],
-//   ['tilt', 'Tilt'],
-//   ['shock', 'Shock']
-// ]
-
-const authorizableProperties = [
-  ['quantity', 'Quantity'],
-  ['deliveryDate', 'Delivery Date']
-]
 
 const _labelProperty = (label, value) => [
   m('dl',
@@ -156,6 +146,66 @@ const _getProposal = (record, receivingAgent, role) =>
 const _hasProposal = (record, receivingAgent, role) =>
   !!_getProposal(record, receivingAgent, role)
 
+const UpdateControl = {
+  view (vnode){
+    let {record, agents, publicKey} = vnode.attrs
+    if (record.final) {
+      return null
+    }
+
+    let onsuccess = vnode.attrs.onsuccess || (() => null)
+    if (_hasProposal(record, publicKey, 'reporter')) {
+      
+    }
+    if(isReporter(record, 'WW01', publicKey)){
+      return [
+        m('.d-flex.justify-content-start', {style: "margin-bottom: 20px;float:right;"},
+          m('button.btn.btn-primary', {
+            onclick: (e) => {
+              e.preventDefault()
+              onsuccess()
+            }
+          }, 'Update'
+        ))
+      ]
+    }
+  }
+}
+
+const _updateChanges = (record, state) => {
+  console.log("accepting")
+  var keys = Object.keys(state);
+  let valueArr = []
+  _.forEach(keys, function(key){
+    if(!state[key].quantity){
+      state[key].quantity = getPropertyValue(record, key).split(";")[0]
+    }
+    if(!state[key].delDate){
+      state[key].delDate = getPropertyValue(record, key).split(";")[1]
+    }
+    valueArr.push({
+      name: key,
+      stringValue: state[key].quantity + ";" + state[key].delDate,
+      dataType: payloads.updateProperties.enum.STRING
+    })
+  })
+  let publicKey = api.getPublicKey()
+  api.get(`agents/${publicKey}`).then(agent => {
+    let agentName = agent.name
+    valueArr.push({
+      name: "Status",
+      stringValue: "PRF Changed by " + agentName ,
+      dataType: payloads.updateProperties.enum.STRING
+    })
+  
+    _updateProperties(record, valueArr)
+    .then(() => {
+      state = null
+    })
+  })
+  // var quantity = state.
+}
+
 const ReporterControl = {
   view (vnode) {
     let {record, agents, publicKey} = vnode.attrs
@@ -164,38 +214,29 @@ const ReporterControl = {
     }
 
     let onsuccess = vnode.attrs.onsuccess || (() => null)
+    let reporterRecs = Object.entries(_reporters(record)).filter(([key, _]) => key !== publicKey)[0]
     if (record.owner === publicKey) {
       return [
-        m(AuthorizeReporter, {
-          record,
-          agents,
-          onsubmit: ([publicKey, properties]) =>
-          _authorizeReporter(record, publicKey, properties).then(onsuccess)
-        }),
 
-        // Outstanding reporters
-        Object.entries(_reporters(record))
-        .filter(([key, _]) => key !== publicKey)
-        .map(([key, properties]) => {
-          return [
-            m('.mt-2.d-flex.justify-content-start',
-              `${_agentByKey(agents, key).name} authorized for ${properties}`,
-              m('.button.btn.btn-outline-danger.ml-auto', {
+        (reporterRecs ? _row(_labelProperty('Supplier', 
+          // m('div',[
+            _agentByKey(agents, reporterRecs[0]).name),
+            m('.button.btn.btn-outline-danger.ml-auto', {
                 onclick: (e) => {
                   e.preventDefault()
                   _revokeAuthorization(record, key, properties)
                     .then(onsuccess)
                 }
               },
-              'Revoke Authorization'))
-          ]
-        }),
+              'Revoke')
+          // ])
+        ) : null),
 
         // Pending authorizations
         record.proposals.filter((p) => p.role === 'REPORTER' && p.issuingAgent === publicKey).map(
           (p) =>
             m('.mt-2.d-flex.justify-content-start',
-              `Pending proposal for ${_agentByKey(agents, p.receivingAgent).name} on ${p.properties}`,
+              `Pending proposal for ${_agentByKey(agents, p.receivingAgent).name}`,
               m('.button.btn.btn-outline-danger.ml-auto',
                 {
                   onclick: (e) => {
@@ -210,8 +251,9 @@ const ReporterControl = {
       ]
     } else if (_hasProposal(record, publicKey, 'reporter')) {
       let proposal = _getProposal(record, publicKey, 'reporter')
+      let agent = _agentByKey(agents, publicKey).name;
       return [
-        m('.d-flex.justify-content-start',
+        m('.d-flex.justify-content-start', {style: "margin-bottom: 20px;"},
           m('button.btn.btn-primary', {
             onclick: (e) => {
               e.preventDefault()
@@ -220,8 +262,8 @@ const ReporterControl = {
                 .then(onsuccess)
             }
           },
-          `Accept Reporting Authorization for ${proposal.properties}`),
-          m('button.btn.btn-danger.ml-auto', {
+          `Accept Reporting Authorization by  ${agent}`),
+          m('button.btn.btn-danger', {
             onclick: (e) => {
               e.preventDefault()
               _answerProposal(record, publicKey, ROLE_TO_ENUM['reporter'],
@@ -363,28 +405,27 @@ const ReportQuantity = {
         onsubmit: (e) => {
           e.preventDefault()
           _updateProperty(vnode.attrs.record, {
-            name: 'quantity',
-            intValue: vnode.state.quantity,
+            name: 'quantity_' + vnode.attrs.id,
+            intValue: vnode.state['quantity_' + vnode.attrs.id],
             dataType: payloads.updateProperties.enum.INT
           })
           .then(() => {
-            vnode.state.quantity = null
+            vnode.state['quantity_' + vnode.attrs.id] = null
           })
           .then(onsuccess)
         }
       },
-      m('.form-row',
-        m('.col.md-4.mr-1',
-          m('input.form-control', {
-            placeholder: 'Enter Quantity',
-            type: 'number',
-            step: 'any',
-            oninput: m.withAttr('value', (value) => {
-              vnode.state.quantity = value
-            })
-          })),
-        m('.col-2',
-          m('button.btn.btn-primary', 'Update'))))
+      [m('button.btn.btn-primary', {value: "Update", style:'margin-left:10px; float:right'}, "Update"),
+      m('input.form-control[type="text"]', {
+        placeholder: 'Enter Quantity',
+        step: 'any',
+        style:'width: 200px; display:inline-block; float:right',
+        oninput: m.withAttr('value', (value) => {
+          var model = 'quantity_' + vnode.attrs.id
+          vnode.state[model] = value
+        })
+      })]
+        )
     ]
   }
 }
@@ -588,114 +629,78 @@ const DemandDetail = {
       return m('.alert-warning', `Loading ${vnode.attrs.recordId}`)
     }
 
+    if(!vnode.state.changes){
+      vnode.state.changes = {}
+    }
     let publicKey = api.getPublicKey()
     let owner = vnode.state.owner
     let custodian = vnode.state.custodian
     let record = vnode.state.record
+    let recProperties = record.properties;
+    let reporterHeaders = [
+      "WorkWeek",
+      "Quantity",
+      "Delivery Date",
+      "New Quantity",
+      "New Delivery Date"
+    ]
+    let nonReporterHeaders = [
+      "WorkWeek",
+      "Quantity",
+      "Delivery Date"
+    ]
+    var tempRecords = JSON.parse(JSON.stringify(record))
+    // tempRecords.properties.pop()
+    tempRecords.properties.splice(5,2);
     return [
-      m('.fish-detail',
-        m('h1.text-center', record.recordId),
-        _row(
-          _labelProperty('Created',
-                         _formatTimestamp(getOldestPropertyUpdateTime(record))),
-          _labelProperty('Updated',
-                         _formatTimestamp(getLatestPropertyUpdateTime(record)))),
+      m('h1.text-center', record.recordId),
+      _row( //_labelProperty('Created',_formatTimestamp(getOldestPropertyUpdateTime(record))),
+      _labelProperty('Updated',_formatTimestamp(getLatestPropertyUpdateTime(record))),
+      _labelProperty('Status', (_.find(record.properties, function(d){ return d.name === 'Status'})).value),
+      m(ReporterControl, {
+        record,
+        publicKey,
+        agents: vnode.state.agents,
+        onsuccess: () => _loadData(vnode.attrs.recordId, vnode.state)
+      }),
+      ),
+      m(UpdateControl, {
+        record,
+        publicKey,
+        agents: vnode.state.agents,
+        onsuccess: () => _updateChanges(record, vnode.state.changes)
+      }),
+      m(Table, {
+        headers: (isReporter(tempRecords, "WW01", publicKey) ? reporterHeaders : nonReporterHeaders),
+        rows: tempRecords.properties.map((rec) => [
+          (isReporter(tempRecords, rec.name, publicKey) ? _propLink(record, rec.name, rec.name) : rec.name),
+          getPropertyValue(tempRecords, rec.name) ? getPropertyValue(tempRecords, rec.name).split(";")[0] : "0",
+          getPropertyValue(tempRecords, rec.name) ? getPropertyValue(tempRecords, rec.name).split(";")[1] : "-",
+          (isReporter(tempRecords, "WW01", publicKey) ? (m('input.form-control[type="text"]', {
+            placeholder: 'Enter Quantity',
+            step: 'any',
+            style:'width: 200px; display:inline-block; ',
+            oninput: m.withAttr('value', (value) => {
+              if(!vnode.state.changes[rec.name]){
+                vnode.state.changes[rec.name] = {}
+              }
+              vnode.state.changes[rec.name].quantity = value
+            })
+          }) ) : null),
 
-        _row(
-          _labelProperty('Owner', _agentLink(owner)),
-          m(TransferControl, {
-            publicKey,
-            record,
-            agents: vnode.state.agents,
-            role: 'owner',
-            label: 'Ownership',
-            onsuccess: () => _loadData(vnode.attrs.recordId, vnode.state)
-          })),
-
-        // _row(
-        //   _labelProperty('Custodian', _agentLink(custodian)),
-        //   m(TransferControl, {
-        //     publicKey,
-        //     record,
-        //     agents: vnode.state.agents,
-        //     role: 'custodian',
-        //     label: 'Custodianship',
-        //     onsuccess: () => _loadData(vnode.attrs.recordId, vnode.state)
-        //   })),
-
-        _row(_labelProperty('Delivery Date', getPropertyValue(record, 'deliveryDate'))),
-
-        _row(
-          _labelProperty('Quantity (units)',  getPropertyValue(record, 'quantity', 0))),
-
-        // _row(
-        //   _labelProperty(
-        //     'Location',
-        //     _propLink(record, 'location', _formatLocation(getPropertyValue(record, 'location')))
-        //   ),
-        //   (isReporter(record, 'location', publicKey) && !record.final
-        //    ? m(ReportLocation, { record, onsuccess: () => _loadData(record.recordId, vnode.state) })
-        //    : null)),
-
-        // _row(
-        //   _labelProperty(
-        //     'Temperature',
-        //     _propLink(record, 'temperature', _formatTemp(getPropertyValue(record, 'temperature')))),
-        //   (isReporter(record, 'temperature', publicKey) && !record.final
-        //   ? m(ReportValue,
-        //     {
-        //       name: 'temperature',
-        //       label: 'Temperature (C°)',
-        //       record,
-        //       typeField: 'intValue',
-        //       type: payloads.updateProperties.enum.INT,
-        //       xform: (x) => parsing.toInt(x),
-        //       onsuccess: () => _loadData(vnode.attrs.recordId, vnode.state)
-        //     })
-        //    : null)),
-
-        _row(
-          _labelProperty(
-            'Quantity',
-            _propLink(record, 'quantity', _formatNewValue(record, 'quantity'))),
-          (isReporter(record, 'quantity', publicKey) && !record.final
-           ? m(ReportQuantity, {
-             record,
-             onsuccess: () => _loadData(vnode.attrs.recordId, vnode.state)
-           })
-           : null)),
-
-        _row(
-          _labelProperty(
-            'Delivery Date',
-            _propLink(record, 'deliveryDate', _formatNewValue(record, 'deliveryDate'))),
-          (isReporter(record, 'deliveryDate', publicKey) && !record.final
-           ? m(ReportDeliveryDate, {
-             record,
-             onsuccess: () => _loadData(vnode.attrs.recordId, vnode.state)
-           })
-           : null)),
-
-        _row(m(ReporterControl, {
-          record,
-          publicKey,
-          agents: vnode.state.agents,
-          onsuccess: () => _loadData(vnode.attrs.recordId, vnode.state)
-        })),
-
-        ((record.owner === publicKey && !record.final)
-         ? m('.row.m-2',
-             m('.col.text-center',
-               m('button.btn.btn-danger', {
-                 onclick: (e) => {
-                   e.preventDefault()
-                   _finalizeRecord(record).then(() =>
-                     _loadData(vnode.attrs.recordId, vnode.state))
-                 }
-               },
-               'Finalize')))
-         : '')
-       )
+          (isReporter(tempRecords, "WW01", publicKey) ? (m('input.form-control[type="text"]', {
+            placeholder: 'Enter Delivery Date',
+            step: 'any',
+            style:'width: 200px; display:inline-block;',
+            oninput: m.withAttr('value', (value) => {
+              if(!vnode.state.changes[rec.name]){
+                vnode.state.changes[rec.name] = {}
+              }
+              vnode.state.changes[rec.name].delDate = value
+            })
+          }) ) : null )
+        ])
+      })
     ]
   }
 }
@@ -790,6 +795,17 @@ const _updateProperty = (record, value) => {
     recordId: record.recordId,
     properties: [value]
   })
+
+  return transactions.submit([updatePayload], true).then(() => {
+    console.log('Successfully submitted property update')
+  })
+}
+
+const _updateProperties = (record, values) => {
+    let updatePayload = payloads.updateProperties({
+      recordId: record.recordId,
+      properties: values
+    })
 
   return transactions.submit([updatePayload], true).then(() => {
     console.log('Successfully submitted property update')

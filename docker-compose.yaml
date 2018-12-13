@@ -172,11 +172,11 @@ services:
           sawadm genesis config-genesis.batch config.batch poet.batch poet-settings.batch
         fi;
         sawtooth-validator -vv \
-          --endpoint tcp://192.168.1.102:8800 \
+          --endpoint tcp://192.168.43.27:8800 \
           --bind component:tcp://eth0:4004 \
           --bind network:tcp://eth0:8800 \
           --peering static \
-          --peers tcp://192.168.1.101:8800 
+          --peers tcp://192.168.43.19:8800 
       "
 
   settings-tp:

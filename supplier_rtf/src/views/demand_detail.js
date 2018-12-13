@@ -153,7 +153,7 @@ const AcceptPrfControl = {
     if (_hasProposal(record, publicKey, 'reporter')) {
       
     }
-    if(isReporter(record, 'WW01', publicKey)){
+    if(isReporter(record, 'WW01', publicKey) && !getPropertyValue(record, 'Status').match('RTF by')){
       return [
         m('.d-flex.justify-content-start', {style: "margin-bottom: 20px;float:right;"},
           m('button.btn.btn-primary', {
@@ -213,12 +213,12 @@ const ReporterControl = {
     let onsuccess = vnode.attrs.onsuccess || (() => null)
     if (record.owner === publicKey) {
       return [
-        m(AuthorizeReporter, {
-          record,
-          agents,
-          onsubmit: ([publicKey, properties]) =>
-          _authorizeReporter(record, publicKey, properties).then(onsuccess)
-        }),
+        // m(AuthorizeReporter, {
+        //   record,
+        //   agents,
+        //   onsubmit: ([publicKey, properties]) =>
+        //   _authorizeReporter(record, publicKey, properties).then(onsuccess)
+        // }),
 
         // Outstanding reporters
         Object.entries(_reporters(record))
@@ -594,7 +594,7 @@ const AuthorizeReporter = {
           m(MultiSelect, {
             label: 'Select Fields',
             color: 'primary',
-            options: authorizableProperties,
+            options: [],
             selected: vnode.state.properties,
             onchange: (selection) => {
               vnode.state.properties = selection
@@ -677,12 +677,12 @@ const DemandDetail = {
         onsuccess: () => _acceptPrf(record, vnode.state.changes)
       }),
       m(Table, {
-        headers: (isReporter(tempRecords, "WW01", publicKey) ? reporterHeaders : nonReporterHeaders),
+        headers: (isReporter(tempRecords, "WW01", publicKey) && !getPropertyValue(record, 'Status').match('RTF by') ? reporterHeaders : nonReporterHeaders),
         rows: tempRecords.properties.map((rec) => [
           (isReporter(tempRecords, rec.name, publicKey) ? _propLink(record, rec.name, rec.name) : rec.name),
           getPropertyValue(tempRecords, rec.name) ? getPropertyValue(tempRecords, rec.name).split(";")[0] : "0",
           getPropertyValue(tempRecords, rec.name) ? getPropertyValue(tempRecords, rec.name).split(";")[1] : "-",
-          (isReporter(tempRecords, "WW01", publicKey) ? (m('input.form-control[type="text"]', {
+          (isReporter(tempRecords, "WW01", publicKey) && !getPropertyValue(record, 'Status').match('RTF by') ? (m('input.form-control[type="text"]', {
             placeholder: 'Enter Quantity',
             step: 'any',
             style:'width: 200px; display:inline-block; ',
@@ -694,7 +694,7 @@ const DemandDetail = {
             })
           }) ) : null),
 
-          (isReporter(tempRecords, "WW01", publicKey) ? (m('input.form-control[type="text"]', {
+          (isReporter(tempRecords, "WW01", publicKey) && !getPropertyValue(record, 'Status').match('RTF by') ? (m('input.form-control[type="text"]', {
             placeholder: 'Enter Delivery Date',
             step: 'any',
             style:'width: 200px; display:inline-block;',

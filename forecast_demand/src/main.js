@@ -51,8 +51,8 @@ const Layout = {
 
 const loggedInNav = () => {
   const links = [
-    ['/createDemand', 'Create Demand'],
-    ['/demandDetail', 'View Demand'],
+    ['/createDemand', 'Create PRF'],
+    ['/demandDetail', 'View PRF'],
     ['/agents', 'View Agents']
   ]
   return m(navigation.Navbar, {}, [
@@ -64,7 +64,7 @@ const loggedInNav = () => {
 
 const loggedOutNav = () => {
   const links = [
-    ['/demandDetail', 'View Demand'],
+    ['/demandDetail', 'View PRF'],
     ['/agents', 'View Agents']
   ]
   return m(navigation.Navbar, {}, [

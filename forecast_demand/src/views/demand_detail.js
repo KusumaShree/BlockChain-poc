@@ -157,7 +157,7 @@ const UpdateControl = {
     if (_hasProposal(record, publicKey, 'reporter')) {
       
     }
-    if(isReporter(record, 'WW01', publicKey)){
+    if(isReporter(record, 'WW01', publicKey) && !getPropertyValue(record, 'Status').match('RTF by')){
       return [
         m('.d-flex.justify-content-start', {style: "margin-bottom: 20px;float:right;"},
           m('button.btn.btn-primary', {
@@ -215,7 +215,7 @@ const ReporterControl = {
 
     let onsuccess = vnode.attrs.onsuccess || (() => null)
     let reporterRecs = Object.entries(_reporters(record)).filter(([key, _]) => key !== publicKey)[0]
-    if (record.owner === publicKey) {
+    if (record.owner === publicKey && !getPropertyValue(record, 'Status').match('RTF by')) {
       return [
 
         (reporterRecs ? _row(_labelProperty('Supplier', 
@@ -249,6 +249,16 @@ const ReporterControl = {
                 'Rescind Proposal')))
 
       ]
+    } else if (record.owner === publicKey && (getPropertyValue(record, 'Status').match('RTF by') !== undefined)) {
+      return [m('.button.btn.btn-primary.ml-auto', {
+        onclick: (e) => {
+          e.preventDefault()
+          _createPO(record, key, properties)
+            .then(onsuccess)
+        }
+      },
+      'Create Purchase Order')
+    ]
     } else if (_hasProposal(record, publicKey, 'reporter')) {
       let proposal = _getProposal(record, publicKey, 'reporter')
       let agent = _agentByKey(agents, publicKey).name;
@@ -671,12 +681,12 @@ const DemandDetail = {
         onsuccess: () => _updateChanges(record, vnode.state.changes)
       }),
       m(Table, {
-        headers: (isReporter(tempRecords, "WW01", publicKey) ? reporterHeaders : nonReporterHeaders),
+        headers: (isReporter(tempRecords, "WW01", publicKey) && !getPropertyValue(record, 'Status').match('RTF by') ? reporterHeaders : nonReporterHeaders),
         rows: tempRecords.properties.map((rec) => [
           (isReporter(tempRecords, rec.name, publicKey) ? _propLink(record, rec.name, rec.name) : rec.name),
           getPropertyValue(tempRecords, rec.name) ? getPropertyValue(tempRecords, rec.name).split(";")[0] : "0",
           getPropertyValue(tempRecords, rec.name) ? getPropertyValue(tempRecords, rec.name).split(";")[1] : "-",
-          (isReporter(tempRecords, "WW01", publicKey) ? (m('input.form-control[type="text"]', {
+          (isReporter(tempRecords, "WW01", publicKey) && !getPropertyValue(record, 'Status').match('RTF by') ? (m('input.form-control[type="text"]', {
             placeholder: 'Enter Quantity',
             step: 'any',
             style:'width: 200px; display:inline-block; ',
@@ -688,7 +698,7 @@ const DemandDetail = {
             })
           }) ) : null),
 
-          (isReporter(tempRecords, "WW01", publicKey) ? (m('input.form-control[type="text"]', {
+          (isReporter(tempRecords, "WW01", publicKey)&& !getPropertyValue(record, 'Status').match('RTF by')  ? (m('input.form-control[type="text"]', {
             placeholder: 'Enter Delivery Date',
             step: 'any',
             style:'width: 200px; display:inline-block;',
@@ -845,6 +855,10 @@ const _revokeAuthorization = (record, reporterKey, properties) => {
   return transactions.submit([revokePayload], true).then(() => {
     console.log('Successfully revoked reporter')
   })
+}
+
+const _createPO = (record, reporterKey, properties) => {
+  console.log('Create Purchase Order')
 }
 
 module.exports = DemandDetail

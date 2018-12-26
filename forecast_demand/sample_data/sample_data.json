@@ -1,29 +1,53 @@
 {
-  "records": [
+  "records": [{
+    "recordId": "PP1123_RTF",
+    "recordType": "PRFRTF",
+    "properties": [
+        {
+          "name":"WW01",
+          "dataType": 2,
+          "intValue": 100 
+        },
+        {
+          "name": "WW02",
+          "dataType": 2,
+          "intValue": 200
+        },
+        {
+          "name": "Status",
+          "dataType": 1,
+          "stringValue": "PRF submitted by Intel"
+        }
+    ],
+    "ownerIndex": 0,
+    "custodianIndex": 2,
+    "reporterIndex": 1,
+    "reportableProperties": ["WW01", "WW02"]
+  },
     {
-      "recordId": "PP11235",
+      "recordId": "PP11235_RTF",
       "recordType": "PRFRTF",
       "properties": [
-          {
-            "name":"WW01",
-            "dataType": 1,
-            "stringValue": "100;21/02/2019" 
-          },
-          {
-            "name": "WW02",
-            "dataType": 1,
-            "stringValue": "200;21/10/2019"
-          },
-          {
-            "name": "Status",
-            "dataType": 1,
-            "stringValue": "PRF submitted by Intel"
-          }
+        {
+          "name":"WW01",
+          "dataType": 2,
+          "intValue": 100 
+        },
+        {
+          "name": "WW02",
+          "dataType": 2,
+          "intValue": 200
+        },
+        {
+          "name": "Status",
+          "dataType": 1,
+          "stringValue": "PRF submitted by Intel"
+        }
       ],
       "ownerIndex": 0,
       "custodianIndex": 2,
       "reporterIndex": 1,
-      "reportableProperties": ["quantity_WW01", "delDate_WW01"]
+      "reportableProperties": ["WW01", "WW02"]
     }
   ],
 

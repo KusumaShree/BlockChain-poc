@@ -4,23 +4,23 @@
     "properties": [
       {
         "name": "WW01",
-        "dataType": 1
+        "dataType": 2
       },
       {
         "name": "WW02",
-        "dataType": 1
+        "dataType": 2
       },
       {
         "name": "WW03",
-        "dataType": 1
+        "dataType": 2
       },
       {
         "name": "WW04",
-        "dataType": 1
+        "dataType": 2
       },
       {
         "name": "WW05",
-        "dataType": 1
+        "dataType": 2
       },    
       {
         "name": "Status",

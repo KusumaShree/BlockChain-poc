@@ -77,6 +77,7 @@ const submit = (txnBytes, { wait }) => {
         .batchStatuses[0]
 
       if (statusBody.status !== ClientBatchStatus.Status.COMMITTED) {
+        console.log(JSON.stringify(statusBody))
         const id = statusBody.batchId
         const status = _.findKey(ClientBatchStatus.Status,
                                  val => val === statusBody.status)

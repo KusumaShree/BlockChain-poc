@@ -180,15 +180,15 @@ const PropertyDetailPage = {
           })
         ]),
         m(Table, {
-          headers: ['Quantity', 'Delivery Date', 'Reporter', 'Time'],
+          headers: ['Quantity', 'Reporter', 'Time'],
           rows: page.map(update => {
             return [
-              parsing.stringifyValue(update.value.split(";")[0],
+              parsing.stringifyValue(update.value,
                                      vnode.state.property.dataType,
                                      vnode.state.property.name),
-              parsing.stringifyValue(update.value.split(";")[1],
-                                     vnode.state.property.dataType,
-                                     vnode.state.property.name),
+              // parsing.stringifyValue(update.value.split(";")[1],
+              //                        vnode.state.property.dataType,
+              //                        vnode.state.property.name),
               update.reporter.name,
               parsing.formatTimestamp(update.timestamp)
             ]

@@ -33,6 +33,8 @@ const {
   isReporter
 } = require('../utils/records')
 
+var rtfFlag = false
+
 const _labelProperty = (label, value) => [
   m('dl',
     m('dt', label),
@@ -144,16 +146,27 @@ const _hasProposal = (record, receivingAgent, role) =>
 
 const AcceptPrfControl = {
   view (vnode){
-    let {record, agents, publicKey} = vnode.attrs
+    let {latestRec, agents, publicKey} = vnode.attrs
+    let record = latestRec 
     if (record.final) {
       return null
     }
 
     let onsuccess = vnode.attrs.onsuccess || (() => null)
+    var rtfRec = record.recordId.split("_")[0] + "_RTF"
+    
+    if(!rtfFlag) {
+      api.get(`records/${rtfRec}`).then((rtfRecord) => {
+        rtfFlag = true
+      }).catch((error) => {
+        console.log(error)
+      })
+    }
+    
     if (_hasProposal(record, publicKey, 'reporter')) {
       
     }
-    if(isReporter(record, 'WW01', publicKey) && !getPropertyValue(record, 'Status').match('RTF by')){
+    if(isReporter(record, 'WW01', publicKey) && !getPropertyValue(record, 'Status').match('RTF by') && !rtfFlag){
       return [
         m('.d-flex.justify-content-start', {style: "margin-bottom: 20px;float:right;"},
           m('button.btn.btn-primary', {
@@ -170,91 +183,143 @@ const AcceptPrfControl = {
 
 const _acceptPrf = (record, state) => {
   console.log("accepting")
-  var keys = Object.keys(state)
-  let valueArr = []
-  _.forEach(keys, function(key){
-    if(!state[key].quantity){
-      state[key].quantity = getPropertyValue(record, key).split(";")[0]
-    }
-    if(!state[key].delDate){
-      state[key].delDate = getPropertyValue(record, key).split(";")[1]
-    }
-    valueArr.push({
-      name: key,
-      stringValue: state[key].quantity + ";" + state[key].delDate,
-      dataType: payloads.updateProperties.enum.STRING
-    })
-  })
+  // var keys = Object.keys(state)
+  // let valueArr = []
+  // _.forEach(keys, function(key){
+  //   if(!state[key].quantity){
+  //     state[key].quantity = getPropertyValue(record, key)
+  //   }
+  //   // if(!state[key].delDate){
+  //   //   state[key].delDate = getPropertyValue(record, key).split(";")[1]
+  //   // }
+  //   valueArr.push({
+  //     name: key,
+  //     stringValue: state[key].quantity + ";" + state[key].delDate,
+  //     dataType: payloads.updateProperties.enum.STRING
+  //   })
+  // })
   
-  let publicKey = api.getPublicKey()
-  api.get(`agents/${publicKey}`).then(agent => {
-    let agentName = agent.name
-    valueArr.push({
-      name: "Status",
-      stringValue: "RTF by  " + agentName ,
-      dataType: payloads.updateProperties.enum.STRING
-    })
+  // let publicKey = api.getPublicKey()
+  // api.get(`agents/${publicKey}`).then(agent => {
+  //   let agentName = agent.name
+  //   valueArr.push({
+  //     name: "Status",
+  //     stringValue: "RTF by  " + agentName ,
+  //     dataType: payloads.updateProperties.enum.STRING
+  //   })
   
-    _updateProperties(record, valueArr)
-    .then(() => {
-      state = null
-    })
-  })
+  //   _updateProperties(record, valueArr)
+  //   .then(() => {
+  //     state = null
+  //   })
+  // })
   // var quantity = state.
+
+  let publicKey = api.getPublicKey()
+  api.get('agents').then(agents => {
+    var ind = _.findIndex(agents, function(d){
+      return d.key == publicKey
+    })
+    let agentName = ""
+    if(ind > -1){
+      agentName = agents[ind].name
+    } 
+    
+    var properties = []
+  
+    var keys = ["WW01", "WW02", "WW03", "WW04", "WW05"]
+    _.forEach(keys, function(key){
+      var val = state[key] ? state[key].quantity : getPropertyValue(record, key)
+      properties.push({
+        name: key,
+        intValue: val,
+        dataType: payloads.createRecord.enum.INT
+      })
+    })
+    properties.push({
+      name: "Status",
+      stringValue: "RTF by " + agentName,
+      dataType: payloads.createRecord.enum.STRING
+    })
+    var payload = [payloads.createRecord({
+      recordId: record.material+ "_RTF",
+      recordType: 'PRFRTF',
+      properties: properties
+    })]
+
+    var ind = _.findIndex(agents, function(d){
+      return d.key == record.owner
+    })
+    if(ind > -1){
+      payload.push(payloads.createProposal({
+        recordId: record.material+ "_RTF",
+        receivingAgent: agents[ind].key,
+        role: payloads.createProposal.enum.REPORTER,
+        properties: ["Status"]
+      }))
+    }
+
+    transactions.submit(payload, true)
+    .then(() => { () => m.route.set(`/demandDetail/${record.material+ "_RTF"}`) })
+
+
+  })
+  
 }
 
 const ReporterControl = {
   view (vnode) {
-    let {record, agents, publicKey} = vnode.attrs
+    let {latestRec, agents, publicKey} = vnode.attrs
+    let record = latestRec
     if (record.final) {
       return null
     }
 
     let onsuccess = vnode.attrs.onsuccess || (() => null)
     if (record.owner === publicKey) {
-      return [
-        // m(AuthorizeReporter, {
-        //   record,
-        //   agents,
-        //   onsubmit: ([publicKey, properties]) =>
-        //   _authorizeReporter(record, publicKey, properties).then(onsuccess)
-        // }),
+      // return [
+      //   // m(AuthorizeReporter, {
+      //   //   record,
+      //   //   agents,
+      //   //   onsubmit: ([publicKey, properties]) =>
+      //   //   _authorizeReporter(record, publicKey, properties).then(onsuccess)
+      //   // }),
 
-        // Outstanding reporters
-        Object.entries(_reporters(record))
-        .filter(([key, _]) => key !== publicKey)
-        .map(([key, properties]) => {
-          return [
-            m('.mt-2.d-flex.justify-content-start',
-              `${_agentByKey(agents, key).name} authorized for ${properties}`,
-              m('.button.btn.btn-outline-danger.ml-auto', {
-                onclick: (e) => {
-                  e.preventDefault()
-                  _revokeAuthorization(record, key, properties)
-                    .then(onsuccess)
-                }
-              },
-              'Revoke Authorization'))
-          ]
-        }),
+      //   // Outstanding reporters
+      //   Object.entries(_reporters(record))
+      //   .filter(([key, _]) => key !== publicKey)
+      //   .map(([key, properties]) => {
+      //     return [
+      //       m('.mt-2.d-flex.justify-content-start',
+      //         `${_agentByKey(agents, key).name} authorized for ${properties}`,
+      //         m('.button.btn.btn-outline-danger.ml-auto', {
+      //           onclick: (e) => {
+      //             e.preventDefault()
+      //             _revokeAuthorization(record, key, properties)
+      //               .then(onsuccess)
+      //           }
+      //         },
+      //         'Revoke Authorization'))
+      //     ]
+      //   }),
 
-        // Pending authorizations
-        record.proposals.filter((p) => p.role === 'REPORTER' && p.issuingAgent === publicKey).map(
-          (p) =>
-            m('.mt-2.d-flex.justify-content-start',
-              `Pending proposal for ${_agentByKey(agents, p.receivingAgent).name}`,
-              m('.button.btn.btn-outline-danger.ml-auto',
-                {
-                  onclick: (e) => {
-                    e.preventDefault()
-                    _answerProposal(record, p.receivingAgent, ROLE_TO_ENUM['reporter'],
-                                    payloads.answerProposal.enum.CANCEL)
-                      .then(onsuccess)
-                  }
-                },
-                'Rescind Proposal')))
+      //   // Pending authorizations
+      //   record.proposals.filter((p) => p.role === 'REPORTER' && p.issuingAgent === publicKey).map(
+      //     (p) =>
+      //       m('.mt-2.d-flex.justify-content-start',
+      //         `Pending proposal for ${_agentByKey(agents, p.receivingAgent).name}`,
+      //         m('.button.btn.btn-outline-danger.ml-auto',
+      //           {
+      //             onclick: (e) => {
+      //               e.preventDefault()
+      //               _answerProposal(record, p.receivingAgent, ROLE_TO_ENUM['reporter'],
+      //                               payloads.answerProposal.enum.CANCEL)
+      //                 .then(onsuccess)
+      //             }
+      //           },
+      //           'Rescind Proposal')))
 
-      ]
+      // ]
     } else if (_hasProposal(record, publicKey, 'reporter')) {
       let proposal = _getProposal(record, publicKey, 'reporter')
       let agent = _agentByKey(agents, proposal.issuingAgent).name;
@@ -623,7 +688,7 @@ const DemandDetail = {
     _loadData(vnode.attrs.recordId, vnode.state)
     vnode.state.refreshId = setInterval(() => {
       _loadData(vnode.attrs.recordId, vnode.state)
-    }, 2000)
+    }, 20000)
   },
 
   onbeforeremove (vnode) {
@@ -631,7 +696,7 @@ const DemandDetail = {
   },
 
   view (vnode) {
-    if (!vnode.state.record) {
+    if (!vnode.state.records) {
       return m('.alert-warning', `Loading ${vnode.attrs.recordId}`)
     }
 
@@ -641,72 +706,114 @@ const DemandDetail = {
     let publicKey = api.getPublicKey()
     let owner = vnode.state.owner
     let custodian = vnode.state.custodian
-    let record = vnode.state.record
-    let recProperties = record.properties;
+    let records = vnode.state.records
+    _.forEach(records,function(rec){
+      rec.material = rec.recordId.split("_")[0]
+      rec.stat = rec.recordId.split("_")[1]
+    })
+    var latestRec;
+    var ind = _.findIndex(records, function(d){
+      return d.stat === "RTF"
+    });
+    if(ind > -1){
+      latestRec = records[ind]
+    } else {
+      latestRec = records[0]
+    }
     let reporterHeaders = [
       "WorkWeek",
       "Quantity",
-      "Delivery Date",
-      "New Quantity",
-      "New Delivery Date"
+      // "Delivery Date",
+      "RTF Quantity",
+      // "New Delivery Date"
     ]
     let nonReporterHeaders = [
       "WorkWeek",
       "Quantity",
-      "Delivery Date"
+      // "Delivery Date"
     ]
-    var tempRecords = JSON.parse(JSON.stringify(record))
+    var tempRecords = JSON.parse(JSON.stringify(records))
     // tempRecords.properties.pop()
-    tempRecords.properties.splice(5,2);
+    _.forEach(tempRecords, function(rec){
+      rec.properties.splice(5,2)
+    })
+    var latestTempRec;
+    var ind = _.findIndex(tempRecords, function(d){
+      return d.stat === "RTF"
+    });
+    if(ind > -1){
+      latestTempRec = tempRecords[ind]
+    } else {
+      latestTempRec = tempRecords[0]
+    }
     return [
-      m('h1.text-center', record.recordId),
-      _row(_labelProperty('Created',_formatTimestamp(getOldestPropertyUpdateTime(record))),
-      _labelProperty('Updated',_formatTimestamp(getLatestPropertyUpdateTime(record))),
-      _labelProperty('Status', (_.find(record.properties, function(d){ return d.name === 'Status'})).value)
+      m('h1.text-center', latestTempRec.material),
+      _row(_labelProperty('Created',_formatTimestamp(getOldestPropertyUpdateTime(latestRec))),
+      _labelProperty('Updated',_formatTimestamp(getLatestPropertyUpdateTime(latestRec))),
+      _labelProperty('Status', (_.find(latestRec.properties, function(d){ return d.name === 'Status'})).value)
       ),
       m(ReporterControl, {
-        record,
+        latestRec,
         publicKey,
         agents: vnode.state.agents,
         onsuccess: () => _loadData(vnode.attrs.recordId, vnode.state)
       }),
       m(AcceptPrfControl, {
-        record,
+        latestRec,
         publicKey,
         agents: vnode.state.agents,
-        onsuccess: () => _acceptPrf(record, vnode.state.changes)
+        onsuccess: () => _acceptPrf(latestRec, vnode.state.changes)
       }),
-      m(Table, {
-        headers: (isReporter(tempRecords, "WW01", publicKey) && !getPropertyValue(record, 'Status').match('RTF by') ? reporterHeaders : nonReporterHeaders),
-        rows: tempRecords.properties.map((rec) => [
-          (isReporter(tempRecords, rec.name, publicKey) ? _propLink(record, rec.name, rec.name) : rec.name),
-          getPropertyValue(tempRecords, rec.name) ? getPropertyValue(tempRecords, rec.name).split(";")[0] : "0",
-          getPropertyValue(tempRecords, rec.name) ? getPropertyValue(tempRecords, rec.name).split(";")[1] : "-",
-          (isReporter(tempRecords, "WW01", publicKey) && !getPropertyValue(record, 'Status').match('RTF by') ? (m('input.form-control[type="text"]', {
-            placeholder: 'Enter Quantity',
-            step: 'any',
-            style:'width: 200px; display:inline-block; ',
-            oninput: m.withAttr('value', (value) => {
-              if(!vnode.state.changes[rec.name]){
-                vnode.state.changes[rec.name] = {}
-              }
-              vnode.state.changes[rec.name].quantity = value
-            })
-          }) ) : null),
+      (latestRec.stat == "PRF" ? 
+        (m(Table, {
+          headers: (isReporter(latestTempRec, "WW01", publicKey) && !getPropertyValue(latestRec, 'Status').match('RTF by') ? reporterHeaders : nonReporterHeaders),
+          rows: latestTempRec.properties.map((rec) => [
+            (isReporter(latestTempRec, rec.name, publicKey) ? _propLink(latestTempRec, rec.name, rec.name) : rec.name),
+            getPropertyValue(latestTempRec, rec.name) ? getPropertyValue(latestTempRec, rec.name): "-",
+            (isReporter(latestTempRec, "WW01", publicKey) && !getPropertyValue(latestRec, 'Status').match('RTF by') ? (m('input.form-control[type="text"]', {
+              placeholder: 'Enter RTF  Quantity',
+              step: 'any',
+              style:'width: 200px; display:inline-block; ',
+              oninput: m.withAttr('value', (value) => {
+                if(!vnode.state.changes[rec.name]){
+                  vnode.state.changes[rec.name] = {}
+                }
+                vnode.state.changes[rec.name].quantity = value
+              })
+            }) ) : null)
+            // ,
 
-          (isReporter(tempRecords, "WW01", publicKey) && !getPropertyValue(record, 'Status').match('RTF by') ? (m('input.form-control[type="text"]', {
-            placeholder: 'Enter Delivery Date',
-            step: 'any',
-            style:'width: 200px; display:inline-block;',
-            oninput: m.withAttr('value', (value) => {
-              if(!vnode.state.changes[rec.name]){
-                vnode.state.changes[rec.name] = {}
-              }
-              vnode.state.changes[rec.name].delDate = value
-            })
-          }) ) : null )
-        ])
-      })
+            // (isReporter(latestTempRec, "WW01", publicKey) && !getPropertyValue(latestRec, 'Status').match('RTF by') ? (m('input.form-control[type="text"]', {
+            //   placeholder: 'Enter Delivery Date',
+            //   step: 'any',
+            //   style:'width: 200px; display:inline-block;',
+            //   oninput: m.withAttr('value', (value) => {
+            //     if(!vnode.state.changes[rec.name]){
+            //       vnode.state.changes[rec.name] = {}
+            //     }
+            //     vnode.state.changes[rec.name].delDate = value
+            //   })
+            // }) ) : null )
+          ])
+        })) : 
+        (m(Table, {
+          headers: [
+            "Status",
+            "WW01",
+            "WW02",
+            "WW03",
+            "WW04",
+            "WW05"
+          ],
+          rows: tempRecords.map((rec) => [
+            rec.stat,
+            getPropertyValue(rec, "WW01") ? getPropertyValue(rec, "WW01") : "-",
+            getPropertyValue(rec, "WW02") ? getPropertyValue(rec, "WW02") : "-",
+            getPropertyValue(rec, "WW03") ? getPropertyValue(rec, "WW03") : "-",
+            getPropertyValue(rec, "WW04") ? getPropertyValue(rec, "WW04") : "-",
+            getPropertyValue(rec, "WW05") ? getPropertyValue(rec, "WW05") : "-",
+          ])
+        })))
     ]
   }
 }
@@ -758,16 +865,24 @@ const _formatTimestamp = (sec) => {
 
 const _loadData = (recordId, state) => {
   let publicKey = api.getPublicKey()
-  return api.get(`records/${recordId}`)
-  .then(record =>
+  var material = recordId.split("_")[0]
+  return api.get('records')
+  .then(records =>
     Promise.all([
-      record,
+      records,
       api.get('agents')]))
-  .then(([record, agents, owner, custodian]) => {
-    state.record = record
+  .then(([records, agents, owner, custodian]) => {
+    var filterArr = _.filter(records, function(d){
+      return (d.recordId).toString().match(material)
+    })
+    //sort filterArr
+    filterArr.sort(function(a,b){
+      getLatestPropertyUpdateTime(a) > getLatestPropertyUpdateTime(b) ? 1 : -1;
+    })
+    state.records = filterArr
     state.agents = agents.filter((agent) => agent.key !== publicKey)
-    state.owner = agents.find((agent) => agent.key === record.owner)
-    state.custodian = agents.find((agent) => agent.key === record.custodian)
+    state.owner = agents.find((agent) => agent.key === filterArr[0].owner)
+    state.custodian = agents.find((agent) => agent.key === filterArr[0].custodian)
   })
 }
 

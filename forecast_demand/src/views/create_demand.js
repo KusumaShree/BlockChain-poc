@@ -117,23 +117,23 @@ const _prepAndSubmit = (vnode,fileData) => {
   var newPayload = [];
   for(var i=0; i< fileData.length; i++){
     var tempJson = {
-      recordId: (fileData[i].Material).toString(),
+      recordId: (fileData[i].Material).toString()+ "_PRF",
       recordType: 'PRFRTF',
       properties: [
         {
           name: "WW01",
-          stringValue: fileData[i].WW01_quantity + ";" + (fileData[i].WW01_deliveryDate).toLocaleDateString(),
-          dataType: payloads.createRecord.enum.STRING
+          intValue: fileData[i].WW01,
+          dataType: payloads.createRecord.enum.INT
         }
       ]
     }
     for(var n = 2; n <= 5; n++){
-      if(fileData[i]['WW0' + n + '_quantity'] && fileData[i]['WW0'+ n + '_deliveryDate']){
+      if(fileData[i]['WW0' + n ] ){
         tempJson.properties = tempJson.properties.concat([
           {
             name: 'WW0' + n,
-            stringValue: fileData[i]['WW0' + n + '_quantity'] + ";" + (fileData[i]['WW0'+ n + '_deliveryDate']).toLocaleDateString(),
-            dataType: payloads.createRecord.enum.STRING
+            intValue: fileData[i]['WW0' + n ],
+            dataType: payloads.createRecord.enum.INT
           }
         ])
       }
@@ -158,7 +158,7 @@ const _prepAndSubmit = (vnode,fileData) => {
 
     if(reporter){
       newPayload.push(payloads.createProposal({
-        recordId: (fileData[i].Material).toString(),
+        recordId: (fileData[i].Material).toString()+ "_PRF",
         receivingAgent: reporter.key,
         role: payloads.createProposal.enum.REPORTER,
         properties: reporterProperties

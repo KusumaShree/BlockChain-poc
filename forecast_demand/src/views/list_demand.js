@@ -35,7 +35,30 @@ const DemandList = {
 
     const refresh = () => {
       api.get('records?recordType=PRFRTF').then((records) => {
-        vnode.state.records = records
+        var procRecords = []
+        var materials = []
+        for(var i=0; i<records.length; i++){
+          records[i].material = records[i].recordId.split("_")[0]
+          records[i].stat = records[i].recordId.split("_")[1]
+          materials.push(records[i].material)
+        }
+        materials = _.uniq(materials)
+        for(var i=0; i< materials.length; i++){
+          var filterArr = _.filter(records, function(d){
+            return d.material == materials[i];
+          });
+          if(filterArr){
+            var ind = _.findIndex(filterArr, function(d){
+              return d.stat == 'RTF'
+            });
+            if(ind > -1){
+              procRecords.push(filterArr[ind])
+            } else{
+              procRecords.push(filterArr[0])
+            }
+          }
+        }
+        vnode.state.records = procRecords
         vnode.state.records.sort((a, b) => {
           return getLatestPropertyUpdateTime(b) - getLatestPropertyUpdateTime(a)
         })
@@ -71,7 +94,7 @@ const DemandList = {
                 .map((rec) => [
                   m(`a[href=/demandDetail/${rec.recordId}]`, {
                     oncreate: m.route.link
-                  }, truncate(rec.recordId, { length: 32 })),
+                  }, truncate(rec.material, { length: 32 })),
                   getPropertyValue(rec, 'WW01') ? getPropertyValue(rec, 'WW01') : "-",
                   getPropertyValue(rec, 'WW02') ? getPropertyValue(rec, 'WW02') : "-",
                   getPropertyValue(rec, 'WW03') ? getPropertyValue(rec, 'WW03') : "-",
